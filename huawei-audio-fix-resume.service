@@ -1,0 +1,12 @@
+[Unit]
+Description=Re-apply Huawei MateBook 14s audio routing after resume
+After=suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target
+
+[Service]
+Type=oneshot
+# 重启守护进程, 让它重新初始化路由 (挂起后 codec 寄存器可能被重置)。
+# 比在守护进程内轮询更安全: 不会持续覆盖 'Headphone' 控件状态。
+ExecStart=/bin/systemctl restart huawei-audio-fix.service
+
+[Install]
+WantedBy=suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target

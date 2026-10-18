@@ -1,0 +1,15 @@
+[Unit]
+Description=Huawei MateBook 14s audio routing fix (speaker/headphone)
+Documentation=https://github.com/thesofproject/linux/issues/3350
+After=sound.target
+Wants=sound.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/huawei-audio-fix.sh
+Restart=always
+RestartSec=3
+User=root
+
+[Install]
+WantedBy=multi-user.target
