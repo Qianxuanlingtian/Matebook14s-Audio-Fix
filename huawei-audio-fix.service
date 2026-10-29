@@ -1,5 +1,5 @@
 [Unit]
-Description=Huawei MateBook 14s audio routing fix (speaker/headphone)
+Description=Huawei MateBook 14s speaker fix (keep DAC 0x10 unmuted)
 Documentation=https://github.com/thesofproject/linux/issues/3350
 After=sound.target
 Wants=sound.target
