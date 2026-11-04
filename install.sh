@@ -1,59 +1,41 @@
 #!/bin/bash
-# MateBook 14s 音频修复 —— 一键安装
-set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TARGET=/usr/local/bin/huawei-audio-fix.sh
-SERVICE=/etc/systemd/system/huawei-audio-fix.service
-RESUME=/etc/systemd/system/huawei-audio-fix-resume.service
+if command -v apt &>/dev/null; then
+    echo "Using apt to install dependencies..."
+    sudo apt update
+    sudo apt install -y alsa-tools alsa-utils
+elif 
+    command -v pacman &>/dev/null; then
+    echo "Using pacman to install dependencies..."
+    sudo pacman -Sy alsa-tools alsa-utils --noconfirm
+elif
+    command -v eopkg &>/dev/null; then
+    echo "Using eopkg to install dependencies..."
+    sudo eopkg up
+    sudo eopkg it alsa-tools alsa-utils -y
+elif 
+    command -v zypper &>/dev/null; then
+    echo "Using zypper to install dependencies..."
+    sudo zypper install -y alsa-tools alsa-utils hda-verb
+elif 
+    command -v dnf &>/dev/null; then
+    echo "Using dnf to install dependencies..."
+    sudo dnf install -y alsa-tools alsa-utils
+else
+    echo "Neither apt, pacman, eopkg, zypper, nor dnf found. Cannot install dependencies."
+fi
 
-die() { echo "错误: $*" >&2; exit 1; }
+echo "Copying files..."
+sudo cp huawei-soundcard-headphones-monitor.sh /usr/local/bin/
+sudo cp huawei-soundcard-headphones-monitor.service /etc/systemd/system/
 
-[[ $EUID -eq 0 ]] || die "请用 sudo 运行: sudo $0"
+echo "Setting rights..."
+sudo chmod +x /usr/local/bin/huawei-soundcard-headphones-monitor.sh
+sudo chmod +x /etc/systemd/system/huawei-soundcard-headphones-monitor.service
 
-echo "==> 检查依赖"
-for c in hda-verb amixer pactl; do
-    command -v "$c" >/dev/null || die "缺少 $c, 请先安装: pacman -S alsa-tools alsa-utils"
-done
-echo "    hda-verb ✓  amixer ✓  pactl ✓"
+echo "Setting up daemon..."
+sudo systemctl daemon-reload
+sudo systemctl enable huawei-soundcard-headphones-monitor
+sudo systemctl restart huawei-soundcard-headphones-monitor
 
-[[ -e /dev/snd/hwC0D0 ]] || die "/dev/snd/hwC0D0 不存在, 请确认声卡编号"
-echo "    /dev/snd/hwC0D0 ✓"
-
-# 若存在旧的错误版本(带周期性重应用), 先停止避免干扰
-systemctl stop huawei-audio-fix.service 2>/dev/null || true
-
-echo "==> 安装脚本到 $TARGET"
-install -m 755 "$SCRIPT_DIR/huawei-audio-fix.sh" "$TARGET"
-
-echo "==> 安装 systemd 服务"
-install -m 644 "$SCRIPT_DIR/huawei-audio-fix.service" "$SERVICE"
-install -m 644 "$SCRIPT_DIR/huawei-audio-fix-resume.service" "$RESUME"
-systemctl daemon-reload
-systemctl enable huawei-audio-fix.service
-systemctl enable huawei-audio-fix-resume.service
-systemctl restart huawei-audio-fix.service
-
-sleep 3
-echo
-echo "==> 服务状态"
-systemctl status huawei-audio-fix.service --no-pager -l | head -15
-
-echo
-echo "==> 最近日志 (应只出现一次切换记录)"
-journalctl -u huawei-audio-fix.service --no-pager -n 10
-
-cat <<'EOF'
-
-安装完成。常用命令:
-  systemctl status  huawei-audio-fix
-  systemctl restart huawei-audio-fix
-  journalctl -u huawei-audio-fix -f
-
-验证要点:
-  * 不插耳机 -> 扬声器有声
-  * 插入耳机 -> 耳机有声, 且扬声器静音
-  * 日志中切换记录不应每 30 秒重复出现
-
-卸载:  sudo ./uninstall.sh
-EOF
+echo "Complete!"
